@@ -166,3 +166,34 @@ def build_upi(
     
     query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
     return f"upi://pay?{query_string}"
+
+
+# 10. Image Format: data:image/<format>;base64,<encoded>
+def build_image_data_uri(
+    image_bytes: bytes,
+    max_dimension: int = 48,
+    quality: int = 65,
+) -> str:
+    """Optimize and encode raw image bytes into a compact base64 Data URI fitting standard QR capacity."""
+    import base64
+    import io
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode not in ("RGB", "RGBA"):
+        img = img.convert("RGBA")
+
+    img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+    
+    out_buf = io.BytesIO()
+    mime = "image/webp"
+    try:
+        img.save(out_buf, format="WEBP", quality=quality)
+    except Exception:
+        out_buf = io.BytesIO()
+        img.save(out_buf, format="PNG", optimize=True)
+        mime = "image/png"
+        
+    encoded = base64.b64encode(out_buf.getvalue()).decode("utf-8")
+    return f"data:{mime};base64,{encoded}"
+

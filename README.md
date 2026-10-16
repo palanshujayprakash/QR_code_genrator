@@ -1,32 +1,33 @@
 # ⚡ Dynamic Streamlit QR Code Generator
 
-A full-featured Streamlit application to generate, validate, customize, and store QR codes across 9 standard payload formats with SQLite history tracking and analytics.
+A full-featured Streamlit application to generate, validate, and customize QR codes across 10 standard payload formats with live validation, image embedding, center logo overlays, and instant download.
 
 ---
 
 ## 🚀 Features
 
-- **9 Standard Payload Formats**:
+- **10 Standard Payload Formats**:
   1. **URL**: Auto-prefix `https://` if missing.
   2. **Plain Text**: Up to 500 characters with live character counter.
-  3. **Wi-Fi**: SSID, password toggle, WPA/WPA2/WEP/None security, hidden network support, and character escaping.
-  4. **Contact (vCard 3.0)**: Multi-field contact card (Name, Phone, Email, Company, Job Title, Address).
-  5. **Email**: Pre-filled `mailto` action with subject and body encoding.
-  6. **Phone**: Direct telephone dialing with country code selector.
-  7. **SMS**: Direct SMS messaging with pre-filled message text.
-  8. **WhatsApp**: `wa.me` instant chat deep-link with URL-encoded message.
-  9. **UPI Payment**: Unified Payments Interface deep-link for instant Indian payments.
+  3. **Image (Upload)**: Embed compact self-contained images (Data URI WebP/PNG) or direct hosted image URLs.
+  4. **Wi-Fi**: SSID, password toggle, WPA/WPA2/WEP/None security, hidden network support, and character escaping.
+  5. **Contact (vCard 3.0)**: Multi-field contact card (Name, Phone, Email, Company, Job Title, Address).
+  6. **Email**: Pre-filled `mailto` action with subject and body encoding.
+  7. **Phone**: Direct telephone dialing with country code selector.
+  8. **SMS**: Direct SMS messaging with pre-filled message text.
+  9. **WhatsApp**: `wa.me` instant chat deep-link with URL-encoded message.
+  10. **UPI Payment**: Unified Payments Interface deep-link for instant Indian payments.
+- **Design & Customization**:
+  - High-end dark theme using **Black (`#000000`)**, **White (`#FFFFFF`)**, and **Cobalt Blue Deep (`#2C3480`)**.
+  - Customizable QR fill color (Cobalt Blue Deep `#2C3480` vs. Classic Black `#000000`).
+  - Optional **Center Logo / Avatar Overlay** embedding on any generated QR code.
 - **Dynamic Live Validation**:
-  - Live field format validation (email, phone, UPI VPA).
+  - Live field format validation (email, phone, UPI VPA, payload size limits).
   - Red field error prompts under invalid inputs.
-  - Generate button stays disabled until all required inputs are valid.
+  - Interactive preview card updates in real time.
 - **Session State Persistence**:
-  - Retains all form inputs across type switches.
+  - Retains form inputs across format switches.
   - Dedicated "Clear Form" button per type.
-- **SQLite Database History & Analytics**:
-  - Automatically records generated QR codes (ID, Type, Label, Payload, Image, Timestamp).
-  - Total count and category breakdown metrics.
-  - Open and inspect past QR codes anytime with one-click download or deletion.
 
 ---
 

@@ -12,6 +12,7 @@ from qr_builders import (
     build_sms,
     build_whatsapp,
     build_upi,
+    build_image_data_uri,
 )
 
 
@@ -78,6 +79,16 @@ def run_tests():
         note="Order #1042",
     )
     print(f"\n[9. UPI Payment]\nOutput:\n{upi_res}")
+
+    # 10. Image Data URI
+    import io
+    from PIL import Image
+    sample_img = Image.new("RGB", (64, 64), color=(44, 52, 128))
+    img_buf = io.BytesIO()
+    sample_img.save(img_buf, format="PNG")
+    img_res = build_image_data_uri(img_buf.getvalue(), max_dimension=32)
+    print(f"\n[10. Image Data URI]\nOutput (truncated):\n{img_res[:60]}... ({len(img_res)} chars)")
+
     print("\n" + "=" * 60)
     print("ALL BUILDER TESTS COMPLETED SUCCESSFULLY!")
     print("=" * 60)
