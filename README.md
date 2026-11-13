@@ -2,6 +2,8 @@
 
 A full-featured Streamlit application to generate, validate, and customize QR codes across 10 standard payload formats with live validation, image embedding, center logo overlays, and instant download.
 
+**Live app:** [https://qr-genrator.streamlit.app/](https://qr-genrator.streamlit.app/)
+
 ---
 
 ## 🚀 Features
