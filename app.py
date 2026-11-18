@@ -1,16 +1,32 @@
 """
-Streamlit QR Code Studio - Phase 1 Implementation
-Modular, high-performance QR code generator with:
-- Feature 1: Logo QR (Memory-only Pillow verification, ~20% width, white rounded padding, auto Level H, remove button)
-- Feature 2: Styled QR (Square, Rounded, Circle dot styles, foreground/background color, WCAG 3:1 contrast check)
-- Feature 8: Multi-format export (PNG, JPG, SVG, PDF, clipboard copy, timestamped filenames)
-Adheres to Black (#000000), White (#FFFFFF), and Cobalt Blue Deep (#2C3480) theme.
+Streamlit QR Code Studio - Precision Indigo SaaS Platform
+Upgraded to match Stitch UI Specification (Precision Indigo Design System).
+Features:
+- Enterprise SaaS Header with Workspace status and Navigation (Dashboard, Create QR, My QRs, Analytics, Settings)
+- Dashboard View: Hero Card, Quick Stats 2x2 grid, Quick Utilities, Recent QR Codes activity feed
+- Create QR Studio: 3-Step Stepper (Type -> Content -> Design & Export)
+- QR Type Switcher: Dynamic QR (Recommended) vs Static QR
+- 10 Payload Formats with validation, format helpers, and SSL / format verification
+- Live QR Stage: High-contrast Viewport, Zoom, Invert, Simulate Scan micro-interaction, WCAG Contrast Check
+- Precision Indigo Styling: Dot Styles (Square, Rounded, Circle), Color Presets & Custom Hex, Logo Uploader & Presets
+- ECC Redundancy (L, M, Q, H) and Resolution scaling (512px to 4096px)
+- Multi-format exports: High-Res PNG, Vector SVG, Print-Ready PDF, JPG, and Copy Image to Clipboard
+- Success Flow: Confetti animation, permanent dynamic short-link, direct download options
+- My QR Codes Repository & Telemetry Analytics dashboard
 """
 
 import io
+import os
+import sys
 import re
 import base64
 from datetime import datetime
+
+# Ensure current directory is in sys.path for local module resolution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
@@ -39,337 +55,736 @@ from utils.exporter import to_png, to_jpg, to_pdf, to_svg
 # PAGE CONFIGURATION
 # =========================================================================
 st.set_page_config(
-    page_title="QR Studio | Professional QR Code Generator",
+    page_title="QR Studio | Precision Indigo SaaS",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Custom High-End Styling: Black (#000000), White (#FFFFFF), Cobalt Blue Deep (#2C3480)
+# Custom High-End Styling: Precision Indigo Design System
 st.markdown(
     """
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <style>
     /* Global Base */
     html, body, [class*="css"], .stApp {
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: #000000 !important;
-        color: #FFFFFF !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        background-color: #FAF8FF !important;
+        color: #131B2E !important;
     }
 
-    /* Ambient Background Glow */
-    .stApp {
-        background-image: 
-            radial-gradient(ellipse 70% 35% at 50% -10%, rgba(44, 52, 128, 0.35), transparent 70%),
-            radial-gradient(circle 400px at 95% 85%, rgba(44, 52, 128, 0.12), transparent);
-        background-attachment: fixed;
+    h1, h2, h3, h4, h5, h6, .brand-title, .headline {
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        color: #131B2E !important;
     }
 
-    /* Header Banner */
-    .header-container {
-        padding: 1.25rem 0 1.75rem 0;
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(44, 52, 128, 0.35);
+    /* Top Navigation Header */
+    .top-navbar {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid #E2E8F0;
+        padding: 0.75rem 1.5rem;
+        margin: -1rem -1rem 1.25rem -1rem;
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
     }
 
-    .brand-pill {
+    .brand-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .brand-logo-icon {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, #3525CD 0%, #4F46E5 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .brand-name {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #131B2E;
+        line-height: 1;
+    }
+
+    .workspace-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(44, 52, 128, 0.25);
-        border: 1px solid #2C3480;
-        color: #FFFFFF;
-        padding: 5px 12px;
+        background: #F2F3FF;
+        border: 1px solid #E2E7FF;
+        color: #3525CD;
+        padding: 4px 10px;
         border-radius: 9999px;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 0 15px rgba(44, 52, 128, 0.3);
     }
 
-    .brand-title {
-        font-family: 'Space Grotesk', sans-serif !important;
-        font-size: 2.3rem;
+    .status-dot-pulse {
+        width: 7px;
+        height: 7px;
+        background-color: #16A34A;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+        animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+
+    /* Hero Banner Card */
+    .hero-banner {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        padding: 1.5rem 1.75rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    .hero-glow {
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        filter: blur(20px);
+    }
+
+    .hero-title {
+        font-size: 1.65rem;
         font-weight: 700;
+        color: #131B2E;
         letter-spacing: -0.02em;
-        margin: 0;
-        color: #FFFFFF;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        margin-bottom: 0.35rem;
     }
 
-    .brand-title span.accent {
-        color: #FFFFFF;
-        background: linear-gradient(135deg, #FFFFFF 20%, #a5b4fc 60%, #2C3480 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .brand-subtitle {
-        color: #cbd5e1;
-        font-size: 0.95rem;
-        margin-top: 0.4rem;
-        max-width: 720px;
+    .hero-subtitle {
+        color: #64748B;
+        font-size: 0.92rem;
+        max-width: 600px;
         line-height: 1.5;
+        margin-bottom: 0.85rem;
     }
 
-    /* Section Headings */
-    .step-heading {
+    /* Metric Stat Cards */
+    .stat-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 1rem 1.15rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
+
+    .stat-header {
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #FFFFFF;
-        margin-bottom: 1rem;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
     }
 
-    .step-badge {
-        background: #2C3480;
-        color: #FFFFFF;
+    .stat-label {
         font-size: 0.75rem;
-        font-weight: 800;
-        padding: 3px 8px;
-        border-radius: 6px;
+        font-weight: 600;
+        color: #64748B;
+        text-transform: uppercase;
         letter-spacing: 0.05em;
     }
 
-    /* Field Errors */
-    .field-error {
-        background: rgba(220, 38, 38, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.4);
-        color: #fca5a5;
-        font-size: 0.82rem;
-        padding: 6px 12px;
+    .stat-icon-box {
+        width: 32px;
+        height: 32px;
         border-radius: 8px;
-        margin-top: -0.3rem;
-        margin-bottom: 0.75rem;
-        font-weight: 500;
         display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
+        font-size: 1.1rem;
     }
 
-    /* Contrast Warnings & Badges */
+    .stat-val {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: #131B2E;
+        line-height: 1.2;
+    }
+
+    .stat-trend {
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        margin-top: 4px;
+    }
+
+    .trend-up { color: #16A34A; }
+    .trend-neutral { color: #64748B; }
+    .trend-indigo { color: #4F46E5; }
+
+    /* Stepper Header */
+    .stepper-container {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 0.85rem 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .step-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .step-num.active {
+        background: #4F46E5;
+        color: #FFFFFF;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+    }
+
+    .step-num.completed {
+        background: #16A34A;
+        color: #FFFFFF;
+    }
+
+    .step-num.inactive {
+        background: #EAEDFF;
+        color: #64748B;
+    }
+
+    .step-text-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #131B2E;
+        line-height: 1.1;
+    }
+
+    .step-text-sub {
+        font-size: 0.72rem;
+        color: #64748B;
+    }
+
+    .stepper-line {
+        flex: 1;
+        height: 2px;
+        background: #E2E8F0;
+        margin: 0 1rem;
+        border-radius: 9999px;
+    }
+
+    /* QR Type Select Cards */
+    .type-card {
+        border: 1.5px solid #E2E8F0;
+        background: #FFFFFF;
+        border-radius: 14px;
+        padding: 1rem 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .type-card.selected {
+        border-color: #4F46E5;
+        background: #F8FAFF;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.1);
+    }
+
+    .badge-recommended {
+        background: #4F46E5;
+        color: #FFFFFF;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Live QR Stage Viewport */
+    .qr-stage-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 18px;
+        padding: 1.4rem;
+        text-align: center;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+        position: sticky;
+        top: 1rem;
+    }
+
+    .stage-header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .dynamic-active-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(22, 163, 74, 0.1);
+        color: #16A34A;
+        border: 1px solid rgba(22, 163, 74, 0.25);
+        padding: 4px 9px;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .target-url-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #F2F3FF;
+        color: #464555;
+        padding: 3px 10px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qr-viewport-frame {
+        background: #FFFFFF;
+        padding: 16px;
+        border-radius: 16px;
+        display: inline-block;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+        margin-bottom: 0.85rem;
+        transition: transform 0.25s ease;
+    }
+
+    .qr-viewport-frame.zoomed {
+        transform: scale(1.15);
+    }
+
+    .qr-viewport-frame.inverted {
+        background: #131B2E;
+    }
+
+    .floating-pill-toolbar {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #F2F3FF;
+        border: 1px solid #E2E7FF;
+        border-radius: 9999px;
+        padding: 4px 12px;
+        margin-top: 0.5rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    .toolbar-tool {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #464555;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        padding: 3px 6px;
+        border-radius: 6px;
+    }
+
+    .toolbar-tool:hover {
+        color: #4F46E5;
+        background: #FFFFFF;
+    }
+
+    /* Scan Simulation Banner */
+    .scan-simulator-banner {
+        background: #DCFCE7;
+        border: 1px solid #BBF7D0;
+        color: #16A34A;
+        border-radius: 10px;
+        padding: 8px 14px;
+        margin-top: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.82rem;
+        font-weight: 600;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* WCAG Contrast Badge */
     .contrast-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.8rem;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 0.82rem;
         font-weight: 600;
-        margin-top: 4px;
-        margin-bottom: 8px;
+        margin: 0.5rem 0;
     }
 
     .contrast-pass {
-        background: rgba(34, 197, 94, 0.12);
-        border: 1px solid rgba(34, 197, 94, 0.4);
-        color: #86efac;
+        background: #DCFCE7;
+        border: 1px solid #BBF7D0;
+        color: #16A34A;
     }
 
     .contrast-fail {
-        background: rgba(234, 179, 8, 0.14);
-        border: 1px solid rgba(234, 179, 8, 0.45);
-        color: #fde047;
+        background: #FEF3C7;
+        border: 1px solid #FDE68A;
+        color: #B45309;
     }
 
-    /* Character Counter */
-    .char-counter {
-        font-size: 0.8rem;
-        color: #94a3b8;
-        text-align: right;
-        margin-top: -0.4rem;
-        margin-bottom: 0.6rem;
+    /* Field Errors */
+    .field-error {
+        background: #FEE2E2;
+        border: 1px solid #FECACA;
+        color: #DC2626;
+        font-size: 0.82rem;
+        padding: 6px 12px;
+        border-radius: 8px;
+        margin-top: -0.25rem;
+        margin-bottom: 0.65rem;
         font-weight: 500;
-    }
-    .char-counter-warn {
-        color: #ef4444 !important;
-        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
-    /* Input & Widget Styling */
+    /* Form Fields & Controls */
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div,
     div[data-baseweb="textarea"] > div,
     input, textarea {
-        background-color: #0b0e1e !important;
-        border-color: rgba(44, 52, 128, 0.45) !important;
-        color: #FFFFFF !important;
-        border-radius: 10px !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #131B2E !important;
+        border-radius: 8px !important;
     }
 
     div[data-baseweb="input"]:focus-within > div,
     div[data-baseweb="textarea"]:focus-within > div,
     div[data-baseweb="select"]:focus-within > div {
-        border-color: #2C3480 !important;
-        box-shadow: 0 0 0 2px rgba(44, 52, 128, 0.5) !important;
+        border-color: #4F46E5 !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
     }
 
     label p {
-        color: #FFFFFF !important;
+        color: #131B2E !important;
         font-weight: 600 !important;
         font-size: 0.88rem !important;
     }
 
-    /* File Uploader Container */
-    div[data-testid="stFileUploader"] {
-        background: #0b0e1e !important;
-        border: 1px dashed rgba(44, 52, 128, 0.6) !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
-    }
-
     /* Buttons */
     button[kind="primary"] {
-        background: linear-gradient(135deg, #2C3480 0%, #3b469e 100%) !important;
+        background: #4F46E5 !important;
         color: #FFFFFF !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 10px !important;
+        border: 1px solid transparent !important;
+        border-radius: 8px !important;
         padding: 0.65rem 1.25rem !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.02em !important;
-        box-shadow: 0 4px 18px rgba(44, 52, 128, 0.45) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.01em !important;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25) !important;
+        transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #374198 0%, #4754b8 100%) !important;
-        box-shadow: 0 6px 24px rgba(44, 52, 128, 0.65) !important;
+        background: #4338CA !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
         transform: translateY(-1px) !important;
     }
 
     button[kind="secondary"] {
-        background: #0b0e1e !important;
-        color: #FFFFFF !important;
-        border: 1px solid rgba(44, 52, 128, 0.4) !important;
-        border-radius: 10px !important;
+        background: #FFFFFF !important;
+        color: #131B2E !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        transition: all 0.2s ease !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+        transition: all 0.15s ease !important;
     }
 
     button[kind="secondary"]:hover {
-        background: rgba(44, 52, 128, 0.25) !important;
-        border-color: #2C3480 !important;
-        color: #FFFFFF !important;
+        background: #F8FAFC !important;
+        border-color: #CBD5E1 !important;
+        color: #4F46E5 !important;
     }
 
-    /* QR Stage Container */
-    .qr-stage {
-        background: #080a15;
-        border: 1px solid rgba(44, 52, 128, 0.45);
-        border-radius: 20px;
-        padding: 1.8rem 1.4rem;
-        text-align: center;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
-        position: sticky;
-        top: 1.5rem;
-    }
-
-    .qr-canvas-holder {
-        background: #FFFFFF;
-        padding: 14px;
-        border-radius: 16px;
-        display: inline-block;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(44, 52, 128, 0.35);
-        border: 3px solid #2C3480;
-        margin-bottom: 1rem;
-    }
-
-    .placeholder-box {
-        border: 2px dashed rgba(44, 52, 128, 0.4);
-        border-radius: 16px;
-        padding: 3.5rem 1.5rem;
-        text-align: center;
-        background: rgba(8, 10, 21, 0.6);
-        color: #94a3b8;
-    }
-
-    .qr-badge {
-        display: inline-block;
-        background: rgba(44, 52, 128, 0.25);
-        color: #FFFFFF;
-        border: 1px solid #2C3480;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-    }
-
-    .info-note {
-        background: rgba(44, 52, 128, 0.15);
-        border-left: 3px solid #2C3480;
-        padding: 8px 12px;
-        border-radius: 0 8px 8px 0;
-        font-size: 0.82rem;
-        color: #cbd5e1;
-        margin: 8px 0 12px 0;
-        line-height: 1.45;
-    }
-
-    /* Expander Styling */
+    /* Expanders / Accordion Styling */
     .streamlit-expanderHeader {
-        background-color: #0b0e1e !important;
-        border: 1px solid rgba(44, 52, 128, 0.35) !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
         border-radius: 10px !important;
-        color: #FFFFFF !important;
+        color: #131B2E !important;
         font-weight: 600 !important;
+        font-size: 0.92rem !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02) !important;
     }
 
     div[data-testid="stExpanderDetails"] {
-        background-color: #060812 !important;
-        border: 1px solid rgba(44, 52, 128, 0.3) !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
         border-top: none !important;
         border-radius: 0 0 10px 10px !important;
+        padding: 1.1rem !important;
+    }
+
+    /* Recent QR Code Feed Card */
+    .recent-qr-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+        transition: all 0.15s ease;
+    }
+
+    .recent-qr-card:hover {
+        border-color: #CBD5E1;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+    }
+
+    /* Success Card & Confetti */
+    .success-hero-box {
+        background: linear-gradient(180deg, #FFFFFF 0%, #FAF8FF 100%);
+        border: 1.5px solid #BBF7D0;
+        border-radius: 18px;
+        padding: 1.75rem;
+        text-align: center;
+        box-shadow: 0 6px 24px rgba(22, 163, 74, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .shortlink-pill {
+        background: #F2F3FF;
+        border: 1px solid #E2E7FF;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #4F46E5;
+        display: inline-block;
+        margin: 0.5rem 0;
+    }
+
+    /* Tabs Bar */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        border-bottom: 1px solid #E2E8F0;
+        padding-bottom: 4px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #64748B;
+        background: transparent;
+        border: none;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: #F2F3FF !important;
+        color: #4F46E5 !important;
     }
 
     hr {
-        border-color: rgba(44, 52, 128, 0.25) !important;
-        margin: 1.25rem 0 !important;
+        border-color: #E2E8F0 !important;
+        margin: 1.15rem 0 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Header Section
-st.markdown(
-    """
-    <div class="header-container">
-        <div class="brand-pill">⚡ Cobalt Studio • Phase 1 Enterprise</div>
-        <div class="brand-title">QR <span class="accent">Generator</span></div>
-        <div class="brand-subtitle">
-            Generate high-resolution QR codes with custom dot styles (Square, Rounded, Circle), center logo embedding, WCAG contrast verification, and multi-format vector exports (PNG, JPG, SVG, PDF).
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
-# Available Formats
+# =========================================================================
+# SESSION STATE INITIALIZATION
+# =========================================================================
 QR_TYPES = [
-    "🌐 URL",
+    "🌐 Website URL",
     "📝 Plain Text",
-    "🖼️ Image (Upload)",
     "📶 Wi-Fi Network",
-    "👤 Contact Card (vCard)",
+    "👤 vCard Profile",
+    "💬 WhatsApp Chat",
     "✉️ Email Message",
-    "📞 Phone Call",
+    "📞 Phone Dial",
     "💬 SMS Message",
-    "🟢 WhatsApp Chat",
     "💳 UPI Payment",
+    "🖼️ Image (Upload)",
 ]
+
+DEFAULT_STATES = {
+    "nav_view": "Dashboard",
+    "create_step": 1,
+    "qr_mode": "Dynamic",
+    "campaign_name": "Summer Promo Menu",
+    "qr_type": QR_TYPES[0],
+    # Form fields
+    "url_input": "https://qrstudio.app/promo/summer25",
+    "text_input": "",
+    "img_encoding_mode": "Direct Embedded Data URI (Self-Contained)",
+    "img_max_dimension": 48,
+    "img_quality": 65,
+    "img_hosted_url": "",
+    "wifi_ssid": "StoreGuest_WiFi",
+    "wifi_password": "GuestSecretPass",
+    "wifi_security": "WPA/WPA2",
+    "wifi_show_password": False,
+    "wifi_hidden": False,
+    "vcard_first_name": "Ravi",
+    "vcard_last_name": "Kumar",
+    "vcard_phone": "+919876543210",
+    "vcard_email": "ravi@example.com",
+    "vcard_company": "Acme Technologies",
+    "vcard_job_title": "Lead Architect",
+    "vcard_website": "https://portfolio.io",
+    "vcard_address": "128 Tech Park, Bengaluru",
+    "email_to": "support@company.com",
+    "email_subject": "Product Inquiry",
+    "email_body": "Hello, I would like to inquire about your product.",
+    "phone_cc": "+91",
+    "phone_number": "9876543210",
+    "sms_number": "9876543210",
+    "sms_message": "Hello, confirming our meeting at 4 PM.",
+    "wa_cc": "+91",
+    "wa_phone": "9876543210",
+    "wa_message": "Hello, I would like to inquire about...",
+    "upi_id": "merchant@okhdfcbank",
+    "upi_name": "Acme Official Store",
+    "upi_amount": "750.00",
+    "upi_note": "Invoice #5021",
+    "password_protect": False,
+    "password_value": "",
+    "expiration_date": False,
+    # Feature 1: Logo State
+    "logo_bytes": None,
+    "logo_filename": "",
+    # Feature 2: Styling State
+    "qr_style": "Rounded",
+    "qr_fg_color": "#4F46E5",
+    "qr_bg_color": "#FFFFFF",
+    "qr_box_size": 10,
+    "ecc_level": "H",
+    "allow_low_contrast": False,
+    # Micro-interaction Toggles
+    "stage_zoom": False,
+    "stage_invert": False,
+    "simulate_scan_active": False,
+    "show_success_card": False,
+    # Mock Repository of Recent QRs
+    "recent_qrs": [
+        {
+            "id": "QR-94821",
+            "name": "Summer Campaign 2025",
+            "type": "Dynamic",
+            "date": "May 18, 2025",
+            "scans": "3,420",
+            "status": "Active",
+            "url": "https://qrstudio.app/promo/summer25",
+        },
+        {
+            "id": "QR-94812",
+            "name": "Store Wi-Fi Guest",
+            "type": "Static",
+            "date": "May 12, 2025",
+            "scans": "Unmetered",
+            "status": "Active",
+            "url": "WIFI:S:StoreGuest;P:GuestPass123;;",
+        },
+        {
+            "id": "QR-94755",
+            "name": "Menu PDF - Downtown",
+            "type": "Dynamic",
+            "date": "Apr 29, 2025",
+            "scans": "8,912",
+            "status": "Active",
+            "url": "https://qrstudio.app/menu/downtown",
+        },
+        {
+            "id": "QR-94610",
+            "name": "Product Launch Linktree",
+            "type": "Dynamic",
+            "date": "Apr 10, 2025",
+            "scans": "1,958",
+            "status": "Paused",
+            "url": "https://qrstudio.app/launch",
+        },
+    ],
+}
+
+for k, v in DEFAULT_STATES.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 EMAIL_REGEX = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 UPI_REGEX = r"^[\w.-]+@[\w.-]+$"
@@ -379,10 +794,7 @@ def render_field_error(msg: str):
 
 
 def render_clipboard_component(png_bytes: bytes):
-    """
-    Render a modern 'Copy to clipboard' component using browser Clipboard API.
-    Provides graceful fallback messaging when clipboard access is blocked.
-    """
+    """Render modern copy-to-clipboard button using browser Clipboard API."""
     b64_png = base64.b64encode(png_bytes).decode("utf-8")
     html_code = f"""
     <!DOCTYPE html>
@@ -394,7 +806,7 @@ def render_clipboard_component(png_bytes: bytes):
           margin: 0;
           padding: 0;
           background: transparent;
-          font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+          font-family: 'Inter', -apple-system, sans-serif;
         }}
         .clip-btn {{
           width: 100%;
@@ -402,32 +814,33 @@ def render_clipboard_component(png_bytes: bytes):
           align-items: center;
           justify-content: center;
           gap: 8px;
-          background: #0b0e1e;
-          color: #FFFFFF;
-          border: 1px solid rgba(44, 52, 128, 0.5);
-          border-radius: 10px;
+          background: #FFFFFF;
+          color: #131B2E;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
           padding: 0.65rem 1rem;
           font-size: 0.88rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
-          box-sizing: border-box;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }}
         .clip-btn:hover {{
-          background: rgba(44, 52, 128, 0.35);
-          border-color: #2C3480;
+          background: #F8FAFC;
+          border-color: #4F46E5;
+          color: #4F46E5;
         }}
         .clip-btn.success {{
-          background: #1e3a8a;
-          border-color: #3b82f6;
+          background: #DCFCE7;
+          border-color: #BBF7D0;
+          color: #16A34A;
         }}
         .fallback-note {{
           display: none;
           margin-top: 6px;
           font-size: 0.78rem;
-          color: #fca5a5;
+          color: #DC2626;
           text-align: center;
-          line-height: 1.4;
         }}
       </style>
     </head>
@@ -436,7 +849,7 @@ def render_clipboard_component(png_bytes: bytes):
         <span>📋</span> Copy Image to Clipboard
       </button>
       <div id="fallback" class="fallback-note">
-        ⚠️ Browser blocked clipboard access. Right-click the QR image above and choose "Copy Image".
+        ⚠️ Clipboard blocked. Right-click QR code above and choose "Copy Image".
       </div>
       <script>
         async function copyImage() {{
@@ -449,12 +862,12 @@ def render_clipboard_component(png_bytes: bytes):
             const blob = await res.blob();
             const item = new ClipboardItem({{ 'image/png': blob }});
             await navigator.clipboard.write([item]);
-            btn.innerHTML = "<span>✅</span> Copied to Clipboard!";
+            btn.innerHTML = "<span>✅</span> Copied Image to Clipboard!";
             btn.classList.add('success');
             setTimeout(() => {{
               btn.innerHTML = "<span>📋</span> Copy Image to Clipboard";
               btn.classList.remove('success');
-            }}, 3000);
+            }}, 2500);
           }} catch (err) {{
             fallback.style.display = 'block';
           }}
@@ -467,759 +880,1045 @@ def render_clipboard_component(png_bytes: bytes):
 
 
 # =========================================================================
-# SESSION STATE INITIALIZATION
+# TOP NAVIGATION BAR (Enterprise SaaS Header)
 # =========================================================================
-DEFAULT_STATES = {
-    "qr_type": QR_TYPES[0],
-    # Form fields
-    "url_input": "https://example.com",
-    "text_input": "",
-    "img_encoding_mode": "Direct Embedded Data URI (Self-Contained)",
-    "img_max_dimension": 48,
-    "img_quality": 65,
-    "img_hosted_url": "",
-    "wifi_ssid": "",
-    "wifi_password": "",
-    "wifi_security": "WPA/WPA2",
-    "wifi_show_password": False,
-    "wifi_hidden": False,
-    "vcard_first_name": "",
-    "vcard_last_name": "",
-    "vcard_phone": "",
-    "vcard_email": "",
-    "vcard_company": "",
-    "vcard_job_title": "",
-    "vcard_website": "",
-    "vcard_address": "",
-    "email_to": "",
-    "email_subject": "",
-    "email_body": "",
-    "phone_cc": "+91",
-    "phone_number": "",
-    "sms_number": "",
-    "sms_message": "",
-    "wa_cc": "+91",
-    "wa_phone": "",
-    "wa_message": "",
-    "upi_id": "",
-    "upi_name": "",
-    "upi_amount": "",
-    "upi_note": "",
-    # Feature 1: Logo State
-    "logo_bytes": None,
-    "logo_filename": "",
-    # Feature 2: Styling State
-    "qr_style": "Rounded",
-    "qr_fg_color": "#2C3480",
-    "qr_bg_color": "#FFFFFF",
-    "qr_box_size": 10,
-    "allow_low_contrast": False,
-}
+c_nav_left, c_nav_right = st.columns([1.5, 2.5])
 
-for key, val in DEFAULT_STATES.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
-
-
-def clear_current_form(selected_type: str):
-    """Reset form fields for the currently selected payload type."""
-    if "URL" in selected_type:
-        st.session_state["url_input"] = ""
-    elif "Text" in selected_type:
-        st.session_state["text_input"] = ""
-    elif "Image" in selected_type:
-        st.session_state["img_hosted_url"] = ""
-    elif "Wi-Fi" in selected_type:
-        st.session_state["wifi_ssid"] = ""
-        st.session_state["wifi_password"] = ""
-        st.session_state["wifi_security"] = "WPA/WPA2"
-        st.session_state["wifi_hidden"] = False
-        st.session_state["wifi_show_password"] = False
-    elif "Contact" in selected_type or "vCard" in selected_type:
-        for k in ["first_name", "last_name", "phone", "email", "company", "job_title", "website", "address"]:
-            st.session_state[f"vcard_{k}"] = ""
-    elif "Email" in selected_type:
-        st.session_state["email_to"] = ""
-        st.session_state["email_subject"] = ""
-        st.session_state["email_body"] = ""
-    elif "Phone" in selected_type:
-        st.session_state["phone_number"] = ""
-    elif "SMS" in selected_type:
-        st.session_state["sms_number"] = ""
-        st.session_state["sms_message"] = ""
-    elif "WhatsApp" in selected_type:
-        st.session_state["wa_phone"] = ""
-        st.session_state["wa_message"] = ""
-    elif "UPI" in selected_type:
-        st.session_state["upi_id"] = ""
-        st.session_state["upi_name"] = ""
-        st.session_state["upi_amount"] = ""
-        st.session_state["upi_note"] = ""
-
-
-# Responsive 2-Column Studio Layout
-col_form, col_stage = st.columns([1.18, 0.82], gap="large")
-
-# =========================================================================
-# LEFT COLUMN: FORMAT SELECTION, PAYLOAD DETAILS & STYLING
-# =========================================================================
-with col_form:
-    # 1. Type Selector
+with c_nav_left:
     st.markdown(
         """
-        <div class="step-heading">
-            <span class="step-badge">STEP 1</span> Select QR Code Payload Format
+        <div class="brand-group">
+            <div class="brand-logo-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-name">QR Studio</div>
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 500;">Precision Indigo Platform</div>
+            </div>
+            <div class="workspace-pill">
+                <span class="status-dot-pulse"></span>
+                <span>Pro Workspace</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    c_type, c_clear = st.columns([3.2, 1.2])
-    with c_type:
-        selected_type = st.selectbox(
-            "Select QR Format",
-            options=QR_TYPES,
-            key="qr_type",
-            label_visibility="collapsed",
-            help="Choose the data schema to embed inside your QR code.",
-        )
-    with c_clear:
-        if st.button("🧹 Clear Form", use_container_width=True, help="Reset inputs for the current format"):
-            clear_current_form(selected_type)
-            st.rerun()
+with c_nav_right:
+    nav_tabs = ["📊 Dashboard", "⚡ Create QR Code", "📁 My QR Codes", "📈 Analytics", "⚙️ Settings"]
+    current_idx = 0
+    if st.session_state["nav_view"] == "Create QR Code":
+        current_idx = 1
+    elif st.session_state["nav_view"] == "My QR Codes":
+        current_idx = 2
+    elif st.session_state["nav_view"] == "Analytics":
+        current_idx = 3
+    elif st.session_state["nav_view"] == "Settings":
+        current_idx = 4
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    # 2. Payload Details
-    st.markdown(
-        """
-        <div class="step-heading">
-            <span class="step-badge">STEP 2</span> Enter Payload Information
-        </div>
-        """,
-        unsafe_allow_html=True,
+    selected_nav = st.radio(
+        "Navigation",
+        options=nav_tabs,
+        index=current_idx,
+        horizontal=True,
+        label_visibility="collapsed",
     )
+    # Map back to view
+    clean_view = selected_nav.split()[-1]
+    if "Dashboard" in selected_nav:
+        st.session_state["nav_view"] = "Dashboard"
+    elif "Create" in selected_nav:
+        st.session_state["nav_view"] = "Create QR Code"
+    elif "My" in selected_nav:
+        st.session_state["nav_view"] = "My QR Codes"
+    elif "Analytics" in selected_nav:
+        st.session_state["nav_view"] = "Analytics"
+    elif "Settings" in selected_nav:
+        st.session_state["nav_view"] = "Settings"
 
-    errors = {}
-    payload_data = ""
-    clean_type_name = selected_type.split()[1].lower() if len(selected_type.split()) > 1 else "code"
-
-    # ========================== 1. URL ==========================
-    if "URL" in selected_type:
-        st.text_input(
-            "Website Destination URL *",
-            key="url_input",
-            placeholder="https://example.com or example.com",
-            help="Full web link. Auto-prefixes https:// if missing.",
-        )
-        url_val = st.session_state["url_input"].strip()
-        if not url_val:
-            errors["url"] = "Destination URL is required."
-        else:
-            payload_data = build_url(url_val)
-
-        if "url" in errors:
-            render_field_error(errors["url"])
-
-    # ========================== 2. Plain Text ==========================
-    elif "Plain Text" in selected_type:
-        st.text_area(
-            "Message / Content (Max 500 characters) *",
-            key="text_input",
-            max_chars=500,
-            placeholder="Type your plain text message or notes here...",
-            help="Plain text encoded directly into the QR matrix.",
-            height=130,
-        )
-        text_val = st.session_state["text_input"]
-        char_count = len(text_val)
-        warn_cls = "char-counter-warn" if char_count >= 500 else ""
-        st.markdown(
-            f'<div class="char-counter {warn_cls}">{char_count} / 500 characters</div>',
-            unsafe_allow_html=True,
-        )
-
-        if not text_val.strip():
-            errors["text"] = "Message text cannot be empty."
-        else:
-            payload_data = build_text(text_val)
-
-        if "text" in errors:
-            render_field_error(errors["text"])
-
-    # ========================== 3. Image (Upload) ==========================
-    elif "Image" in selected_type:
-        st.markdown("<p style='font-weight:600; font-size:0.9rem; margin-bottom: 0.25rem;'>Upload Image File (PNG, JPG, WEBP, GIF) *</p>", unsafe_allow_html=True)
-        uploaded_img_file = st.file_uploader(
-            "Upload Image File",
-            type=["png", "jpg", "jpeg", "webp", "gif"],
-            key="image_payload_uploader",
-            help="Upload an image to encode or link into your QR code.",
-            label_visibility="collapsed",
-        )
-
-        if uploaded_img_file is not None:
-            file_bytes = uploaded_img_file.getvalue()
-            orig_size_kb = len(file_bytes) / 1024
-
-            c_img_thumb, c_img_meta = st.columns([1, 2.2])
-            with c_img_thumb:
-                st.image(file_bytes, caption="Uploaded Image", width=120)
-            with c_img_meta:
-                st.markdown(f"**File:** `{uploaded_img_file.name}`")
-                st.markdown(f"**Size:** `{orig_size_kb:.1f} KB` • **Type:** `{uploaded_img_file.type}`")
-
-            st.markdown("<hr style='margin:0.75rem 0;'>", unsafe_allow_html=True)
-
-            enc_mode = st.radio(
-                "Image Delivery Method",
-                options=["Direct Embedded Data URI (Self-Contained)", "Hosted Image URL"],
-                index=0 if "Direct Embedded" in st.session_state.get("img_encoding_mode", "") else 1,
-                key="img_delivery_radio",
-                horizontal=True,
-            )
-            st.session_state["img_encoding_mode"] = enc_mode
-
-            if "Direct Embedded" in enc_mode:
-                c_dim, c_q = st.columns(2)
-                with c_dim:
-                    dim_choice = st.select_slider(
-                        "Pixel Resolution",
-                        options=[24, 32, 40, 48, 56, 64],
-                        value=st.session_state.get("img_max_dimension", 48),
-                        key="img_max_dimension",
-                        help="Standard QR codes hold up to ~2,800 bytes.",
-                    )
-                with c_q:
-                    q_choice = st.slider(
-                        "Compression Quality",
-                        min_value=40,
-                        max_value=90,
-                        value=st.session_state.get("img_quality", 65),
-                        step=5,
-                        key="img_quality",
-                    )
-
-                try:
-                    data_uri = build_image_data_uri(
-                        file_bytes,
-                        max_dimension=dim_choice,
-                        quality=q_choice,
-                    )
-                    uri_len = len(data_uri)
-                    
-                    if uri_len > 2850:
-                        errors["img_size"] = f"Payload size ({uri_len} bytes) exceeds QR capacity (2,850 bytes max). Reduce pixel resolution or quality."
-                        render_field_error(errors["img_size"])
-                    else:
-                        payload_data = data_uri
-                        st.caption(f"📦 Encoded payload size: **{uri_len} bytes** (fits standard QR code)")
-                except Exception as ex:
-                    errors["img_process"] = f"Unable to process image: {str(ex)}"
-                    render_field_error(errors["img_process"])
-
-            else:
-                st.text_input(
-                    "Destination Image Web Link (Required) *",
-                    key="img_hosted_url",
-                    placeholder="https://example.com/uploads/photo.jpg",
-                )
-                img_url_val = st.session_state["img_hosted_url"].strip()
-                if not img_url_val:
-                    errors["img_url"] = "Hosted image link is required."
-                    render_field_error(errors["img_url"])
-                else:
-                    payload_data = build_url(img_url_val)
-        else:
-            errors["image"] = "Please select and upload an image file above."
-            render_field_error(errors["image"])
-
-    # ========================== 4. Wi-Fi Network ==========================
-    elif "Wi-Fi" in selected_type:
-        st.text_input(
-            "Network SSID Name *",
-            key="wifi_ssid",
-            placeholder="e.g. Cobalt_Fiber_5G",
-            help="Broadcasting name of the wireless access point.",
-        )
-        ssid_val = st.session_state["wifi_ssid"].strip()
-        if not ssid_val:
-            errors["ssid"] = "Network SSID is required."
-            render_field_error(errors["ssid"])
-
-        c_sec, c_hid = st.columns([1, 1])
-        with c_sec:
-            st.selectbox("Encryption Standard", options=["WPA/WPA2", "WEP", "None"], key="wifi_security")
-        with c_hid:
-            st.write("")
-            st.write("")
-            st.checkbox("Hidden Network", key="wifi_hidden")
-
-        sec_val = st.session_state["wifi_security"]
-        if sec_val != "None":
-            st.checkbox("Reveal Password", key="wifi_show_password")
-            pass_type = "default" if st.session_state["wifi_show_password"] else "password"
-            st.text_input(
-                "Wi-Fi Security Password *",
-                type=pass_type,
-                key="wifi_password",
-                placeholder="Enter Wi-Fi network key",
-            )
-            pass_val = st.session_state["wifi_password"]
-            if not pass_val:
-                errors["wifi_pass"] = "Password is required for encrypted networks."
-                render_field_error(errors["wifi_pass"])
-        else:
-            pass_val = ""
-
-        if not errors:
-            payload_data = build_wifi(
-                ssid=ssid_val,
-                password=pass_val,
-                security=sec_val,
-                hidden=st.session_state["wifi_hidden"],
-            )
-
-    # ========================== 5. Contact Card (vCard) ==========================
-    elif "Contact" in selected_type or "vCard" in selected_type:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.text_input("First Name *", key="vcard_first_name", placeholder="Ravi")
-            if not st.session_state["vcard_first_name"].strip():
-                errors["vcard_first_name"] = "First name is required."
-                render_field_error(errors["vcard_first_name"])
-        with c2:
-            st.text_input("Last Name", key="vcard_last_name", placeholder="Kumar")
-
-        c3, c4 = st.columns(2)
-        with c3:
-            st.text_input("Phone Number *", key="vcard_phone", placeholder="+919876543210")
-            phone_val = st.session_state["vcard_phone"].strip()
-            digits = re.sub(r"\D", "", phone_val)
-            if not phone_val:
-                errors["vcard_phone"] = "Contact phone number is required."
-                render_field_error(errors["vcard_phone"])
-            elif len(digits) < 10:
-                errors["vcard_phone"] = "Phone number must contain at least 10 digits."
-                render_field_error(errors["vcard_phone"])
-
-        with c4:
-            st.text_input("Email Address", key="vcard_email", placeholder="ravi@example.com")
-            email_val = st.session_state["vcard_email"].strip()
-            if email_val and not re.match(EMAIL_REGEX, email_val):
-                errors["vcard_email"] = "Invalid email format."
-                render_field_error(errors["vcard_email"])
-
-        c5, c6 = st.columns(2)
-        with c5:
-            st.text_input("Organization / Company", key="vcard_company", placeholder="Acme Technologies")
-        with c6:
-            st.text_input("Designation / Job Title", key="vcard_job_title", placeholder="Technical Director")
-
-        st.text_input("Website Portfolio Link", key="vcard_website", placeholder="https://portfolio.io")
-        st.text_input("Office / Postal Address", key="vcard_address", placeholder="128 Tech Park, Bengaluru")
-
-        if not errors:
-            payload_data = build_vcard(
-                first_name=st.session_state["vcard_first_name"],
-                last_name=st.session_state["vcard_last_name"],
-                phone=st.session_state["vcard_phone"],
-                email=st.session_state["vcard_email"],
-                company=st.session_state["vcard_company"],
-                job_title=st.session_state["vcard_job_title"],
-                website=st.session_state["vcard_website"],
-                address=st.session_state["vcard_address"],
-            )
-
-    # ========================== 6. Email ==========================
-    elif "Email" in selected_type:
-        st.text_input("Recipient Email Address *", key="email_to", placeholder="support@company.com")
-        to_val = st.session_state["email_to"].strip()
-        if not to_val:
-            errors["email_to"] = "Recipient email is required."
-            render_field_error(errors["email_to"])
-        elif not re.match(EMAIL_REGEX, to_val):
-            errors["email_to"] = "Please enter a valid recipient email (e.g. name@domain.com)."
-            render_field_error(errors["email_to"])
-
-        st.text_input("Subject Line", key="email_subject", placeholder="Product Inquiry & Support")
-        st.text_area("Message Body Content", key="email_body", placeholder="Write your pre-filled email draft here...", height=110)
-
-        if not errors:
-            payload_data = build_email(
-                to=to_val,
-                subject=st.session_state["email_subject"],
-                body=st.session_state["email_body"],
-            )
-
-    # ========================== 7. Phone Call ==========================
-    elif "Phone" in selected_type:
-        c_cc, c_num = st.columns([1, 2.2])
-        with c_cc:
-            st.selectbox("Country Code", options=["+91", "+1", "+44", "+61", "+81", "+49", "+33", "+971"], key="phone_cc")
-        with c_num:
-            st.text_input("Mobile / Telephone Number *", key="phone_number", placeholder="9876543210")
-
-        num_val = st.session_state["phone_number"].strip()
-        digits = re.sub(r"\D", "", num_val)
-        if not num_val:
-            errors["phone"] = "Phone number is required."
-            render_field_error(errors["phone"])
-        elif len(digits) < 10:
-            errors["phone"] = "Enter a valid phone number (at least 10 digits)."
-            render_field_error(errors["phone"])
-        else:
-            payload_data = build_phone(num_val, country_code=st.session_state["phone_cc"])
-
-    # ========================== 8. SMS Message ==========================
-    elif "SMS" in selected_type:
-        st.text_input("Target Mobile Number *", key="sms_number", placeholder="+919876543210 or 9876543210")
-        num_val = st.session_state["sms_number"].strip()
-        digits = re.sub(r"\D", "", num_val)
-        if not num_val:
-            errors["sms_num"] = "Target phone number is required."
-            render_field_error(errors["sms_num"])
-        elif len(digits) < 10:
-            errors["sms_num"] = "Enter a valid phone number (at least 10 digits)."
-            render_field_error(errors["sms_num"])
-
-        st.text_area("Pre-filled Text Message", key="sms_message", placeholder="Hello, confirming our meeting at 4 PM.", height=90)
-
-        if not errors:
-            payload_data = build_sms(num_val, message=st.session_state["sms_message"])
-
-    # ========================== 9. WhatsApp Chat ==========================
-    elif "WhatsApp" in selected_type:
-        c_cc, c_num = st.columns([1, 2.2])
-        with c_cc:
-            st.selectbox("Country Code", options=["+91", "+1", "+44", "+61", "+81", "+49", "+971"], key="wa_cc")
-        with c_num:
-            st.text_input("WhatsApp Mobile Number *", key="wa_phone", placeholder="9876543210")
-
-        num_val = st.session_state["wa_phone"].strip()
-        digits = re.sub(r"\D", "", num_val)
-        if not num_val:
-            errors["wa_phone"] = "WhatsApp phone number is required."
-            render_field_error(errors["wa_phone"])
-        elif len(digits) < 10:
-            errors["wa_phone"] = "Phone number must contain at least 10 digits."
-            render_field_error(errors["wa_phone"])
-
-        st.text_area("Prefilled Chat Message", key="wa_message", placeholder="Hello, I would like to inquire about...", height=90)
-
-        if not errors:
-            full_number = f"{st.session_state['wa_cc']}{num_val}"
-            payload_data = build_whatsapp(full_number, message=st.session_state["wa_message"])
-
-    # ========================== 10. UPI Payment ==========================
-    elif "UPI Payment" in selected_type:
-        st.text_input(
-            "Merchant / Payee UPI ID (VPA) *",
-            key="upi_id",
-            placeholder="merchant@okhdfcbank or user@upi",
-            help="Unified Payments Virtual Payment Address.",
-        )
-        upi_val = st.session_state["upi_id"].strip()
-        if not upi_val:
-            errors["upi_id"] = "UPI ID is required."
-            render_field_error(errors["upi_id"])
-        elif not re.match(UPI_REGEX, upi_val):
-            errors["upi_id"] = "Invalid UPI format. Must follow standard pattern (e.g. name@bank)."
-            render_field_error(errors["upi_id"])
-
-        st.text_input("Payee Account Name *", key="upi_name", placeholder="Acme Official Store")
-        name_val = st.session_state["upi_name"].strip()
-        if not name_val:
-            errors["upi_name"] = "Payee name is required."
-            render_field_error(errors["upi_name"])
-
-        c_amt, c_note = st.columns(2)
-        with c_amt:
-            st.text_input("Amount in INR (Optional)", key="upi_amount", placeholder="e.g. 750.00")
-            amt_val = st.session_state["upi_amount"].strip()
-            if amt_val:
-                try:
-                    val_float = float(amt_val)
-                    if val_float <= 0:
-                        errors["upi_amt"] = "Amount must be greater than zero."
-                        render_field_error(errors["upi_amt"])
-                except ValueError:
-                    errors["upi_amt"] = "Amount must be a numeric value."
-                    render_field_error(errors["upi_amt"])
-
-        with c_note:
-            st.text_input("Payment Note / Reference", key="upi_note", placeholder="Invoice #5021")
-
-        if not errors:
-            payload_data = build_upi(
-                upi_id=upi_val,
-                payee_name=name_val,
-                amount=st.session_state["upi_amount"],
-                note=st.session_state["upi_note"],
-            )
-
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    # =====================================================================
-    # FEATURE 1: LOGO QR SECTION
-    # =====================================================================
-    with st.expander("🖼️ Feature 1: Add Center Logo", expanded=bool(st.session_state.get("logo_bytes"))):
-        st.caption("Upload a PNG or JPG logo (max 2 MB). Verified in memory without disk persistence.")
-        logo_file = st.file_uploader(
-            "Upload Logo File (PNG or JPG only)",
-            type=["png", "jpg", "jpeg"],
-            key="logo_uploader",
-            label_visibility="collapsed",
-            help="Processed completely in memory. Placed at center with white rounded backing.",
-        )
-
-        if logo_file is not None:
-            is_valid_logo, logo_err, valid_bytes = validate_logo(logo_file)
-            if is_valid_logo:
-                st.session_state["logo_bytes"] = valid_bytes
-                st.session_state["logo_filename"] = logo_file.name
-            else:
-                render_field_error(logo_err)
-
-        if st.session_state.get("logo_bytes") is not None:
-            c_l_prev, c_l_act = st.columns([1, 2])
-            with c_l_prev:
-                st.image(st.session_state["logo_bytes"], width=80, caption="Active Logo")
-            with c_l_act:
-                st.markdown(f"**Logo:** `{st.session_state.get('logo_filename', 'uploaded_logo')}`")
-                if st.button("🗑️ Remove Logo", use_container_width=True, help="Detach logo from QR code"):
-                    st.session_state["logo_bytes"] = None
-                    st.session_state["logo_filename"] = ""
-                    st.rerun()
-
-            st.markdown(
-                """
-                <div class="info-note">
-                    ℹ️ <strong>Auto-Protection Active:</strong> Error correction Level H (30% recovery) is automatically enforced to keep the QR code 100% readable with the center logo.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-    # =====================================================================
-    # FEATURE 2: STYLED QR (DOT STYLES & CONTRAST CHECK)
-    # =====================================================================
-    with st.expander("🎨 Feature 2: Dot Styles & Color Customization", expanded=True):
-        # 1. Module Style Selector
-        style_choice = st.radio(
-            "Module Dot Style",
-            options=["Square", "Rounded", "Circle"],
-            index=["Square", "Rounded", "Circle"].index(st.session_state.get("qr_style", "Rounded")),
-            horizontal=True,
-            help="Choose between classic Square modules, modern Rounded corners, or elegant Circle dots.",
-        )
-        st.session_state["qr_style"] = style_choice
-
-        # 2. Foreground & Background Colors
-        c_col1, c_col2 = st.columns(2)
-        with c_col1:
-            fg_color = st.color_picker(
-                "Foreground (QR Pattern)",
-                value=st.session_state.get("qr_fg_color", "#2C3480"),
-                help="Cobalt Blue Deep (#2C3480) or custom color.",
-            )
-            st.session_state["qr_fg_color"] = fg_color
-
-        with c_col2:
-            bg_color = st.color_picker(
-                "Background Color",
-                value=st.session_state.get("qr_bg_color", "#FFFFFF"),
-                help="Background color. Default pure White (#FFFFFF).",
-            )
-            st.session_state["qr_bg_color"] = bg_color
-
-        # 3. Size Slider
-        box_size = st.slider(
-            "Module Scale / Resolution",
-            min_value=6,
-            max_value=16,
-            value=st.session_state.get("qr_box_size", 10),
-            help="Pixel size of each individual QR matrix block.",
-        )
-        st.session_state["qr_box_size"] = box_size
-
-        # 4. WCAG Contrast Check
-        ratio = contrast_ratio(fg_color, bg_color)
-        is_contrast_ok = ratio >= 3.0
-
-        if is_contrast_ok:
-            st.markdown(
-                f'<div class="contrast-badge contrast-pass">✅ Contrast Ratio: <strong>{ratio:.1f}:1</strong> (Passes WCAG ≥ 3:1)</div>',
-                unsafe_allow_html=True,
-            )
-            st.session_state["allow_low_contrast"] = False
-        else:
-            st.markdown(
-                f'<div class="contrast-badge contrast-fail">⚠️ Low Contrast Ratio: <strong>{ratio:.1f}:1</strong> (&lt; 3:1 minimum)</div>',
-                unsafe_allow_html=True,
-            )
-            st.warning("⚠️ QR may not scan reliably under different camera lenses and lighting conditions. Please choose higher contrasting colors.")
-            st.session_state["allow_low_contrast"] = st.checkbox(
-                "Proceed with low contrast download anyway",
-                value=st.session_state.get("allow_low_contrast", False),
-                help="Check to override and allow download buttons even with poor contrast.",
-            )
+st.markdown("<hr style='margin-top: 0.5rem;'>", unsafe_allow_html=True)
 
 
 # =========================================================================
-# RIGHT COLUMN: LIVE CANVAS, CONTRAST GATING & MULTI-FORMAT EXPORT
+# VIEW 1: DASHBOARD (Stitch dashboard/code.html)
 # =========================================================================
-with col_stage:
-    st.markdown(
-        """
-        <div class="step-heading">
-            <span class="step-badge">STEP 3</span> Live QR Canvas & Multi-Export
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    is_payload_valid = len(errors) == 0 and bool(payload_data)
-
-    if is_payload_valid:
-        try:
-            # Build Styled QR Image in Memory
-            pil_qr_img = build_qr(
-                data=payload_data,
-                size=st.session_state.get("qr_box_size", 10),
-                fg=st.session_state.get("qr_fg_color", "#2C3480"),
-                bg=st.session_state.get("qr_bg_color", "#FFFFFF"),
-                style=st.session_state.get("qr_style", "Rounded"),
-                logo_bytes=st.session_state.get("logo_bytes"),
-            )
-
-            # Export PNG bytes for inline rendering
-            png_bytes = to_png(pil_qr_img)
-            b64_qr = base64.b64encode(png_bytes).decode("utf-8")
-
-            logo_tag = " • 🖼️ Logo" if st.session_state.get("logo_bytes") else ""
-            style_label = st.session_state.get("qr_style", "Rounded")
-
-            # Stage Presentation Card
-            st.markdown(
-                f"""
-                <div class="qr-stage">
-                    <div class="qr-badge">✨ {selected_type.split()[0]} {style_label} Style{logo_tag}</div>
-                    <div style="margin: 1.25rem 0 0.75rem 0;">
-                        <div class="qr-canvas-holder">
-                            <img src="data:image/png;base64,{b64_qr}" style="width: 250px; height: 250px; display: block; border-radius: 8px;" alt="Generated QR Code" />
-                        </div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.25rem; font-weight: 500;">
-                        Scan with any smartphone camera or QR lens
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.write("")
-
-            # Contrast Validation Check for Downloads
-            can_download = is_contrast_ok or st.session_state.get("allow_low_contrast", False)
-
-            if not can_download:
-                st.info("🔒 Downloads are paused due to low color contrast (< 3:1). Adjust colors or check 'Proceed anyway' in Step 2 to enable exports.")
-
-            # =================================================================
-            # FEATURE 8: MULTI-FORMAT EXPORT (PNG, JPG, SVG, PDF)
-            # =================================================================
-            st.markdown("<p style='font-weight:700; font-size:0.95rem; margin-bottom:0.5rem;'>⬇️ Export Formats</p>", unsafe_allow_html=True)
-            
-            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_base = f"qr_{clean_type_name}_{timestamp_str}"
-
-            # Prepare bytes for each format
-            jpg_bytes = to_jpg(pil_qr_img)
-            pdf_bytes = to_pdf(pil_qr_img)
-            svg_bytes = to_svg(
-                payload_data,
-                fg=st.session_state.get("qr_fg_color", "#2C3480"),
-                bg=st.session_state.get("qr_bg_color", "#FFFFFF"),
-                scale=st.session_state.get("qr_box_size", 10),
-            )
-
-            # 2x2 Download Buttons Grid
-            d_col1, d_col2 = st.columns(2)
-            with d_col1:
-                st.download_button(
-                    label="⬇️ Download PNG",
-                    data=png_bytes,
-                    file_name=f"{file_base}.png",
-                    mime="image/png",
-                    type="primary",
-                    disabled=not can_download,
-                    use_container_width=True,
-                )
-                st.download_button(
-                    label="⬇️ Download SVG",
-                    data=svg_bytes,
-                    file_name=f"{file_base}.svg",
-                    mime="image/svg+xml",
-                    disabled=not can_download,
-                    use_container_width=True,
-                )
-
-            with d_col2:
-                st.download_button(
-                    label="⬇️ Download JPG",
-                    data=jpg_bytes,
-                    file_name=f"{file_base}.jpg",
-                    mime="image/jpeg",
-                    disabled=not can_download,
-                    use_container_width=True,
-                )
-                st.download_button(
-                    label="⬇️ Download PDF",
-                    data=pdf_bytes,
-                    file_name=f"{file_base}.pdf",
-                    mime="application/pdf",
-                    disabled=not can_download,
-                    use_container_width=True,
-                )
-
-            # Note for SVG export when styling or logo is applied
-            if st.session_state.get("logo_bytes") is not None or st.session_state.get("qr_style") != "Square":
-                st.markdown(
-                    """
-                    <div class="info-note" style="font-size: 0.78rem;">
-                        ℹ️ <strong>SVG Note:</strong> SVG exports the clean mathematical vector QR matrix (without center logo and custom dot rounding) for optimal vector resolution in CAD/print workflows.
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-            st.write("")
-
-            # Feature 8: Copy Image to Clipboard
-            render_clipboard_component(png_bytes)
-
-            st.write("")
-
-            # Expandable Raw Payload Inspector
-            with st.expander("🔍 Inspect Raw Encoded Payload", expanded=False):
-                st.code(payload_data, language="text")
-
-        except Exception as err:
-            st.error(f"Error generating styled QR code: {str(err)}")
-
-    else:
+if st.session_state["nav_view"] == "Dashboard":
+    # 1. Welcome Hero Banner
+    c_hero_txt, c_hero_cta = st.columns([2.8, 1.2])
+    with c_hero_txt:
         st.markdown(
             """
-            <div class="placeholder-box">
-                <div style="font-size: 2.8rem; margin-bottom: 0.75rem;">⚡</div>
-                <div style="font-weight: 700; color: #FFFFFF; font-size: 1.1rem; margin-bottom: 0.35rem;">
-                    Awaiting Valid Input
+            <div class="hero-banner">
+                <div class="hero-glow"></div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: #F2F3FF; padding: 3px 10px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; color: #4F46E5; text-transform: uppercase; margin-bottom: 0.5rem;">
+                    <span class="status-dot-pulse"></span>
+                    <span>Live Telemetry Active</span>
                 </div>
-                <div style="font-size: 0.85rem; color: #94a3b8; max-width: 280px; margin: 0 auto;">
-                    Fill out all required fields on the left to immediately generate and preview your QR code.
+                <div class="hero-title">Welcome to QR Studio</div>
+                <div class="hero-subtitle">
+                    Create, customize, and deploy high-fidelity QR codes with instant vector exports, live scan telemetry, and dynamic destination routing.
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+    with c_hero_cta:
+        st.write("")
+        st.write("")
+        if st.button("➕ Create New QR Code", type="primary", use_container_width=True):
+            st.session_state["nav_view"] = "Create QR Code"
+            st.session_state["create_step"] = 1
+            st.rerun()
+        if st.button("🔍 Scan & Test Simulator", use_container_width=True):
+            st.session_state["nav_view"] = "Create QR Code"
+            st.session_state["simulate_scan_active"] = True
+            st.rerun()
+
+    # 2. Quick Stats Grid (4 columns)
+    st.markdown("<div style='font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.5rem 0;'>Workspace Telemetry</div>", unsafe_allow_html=True)
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    with sc1:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total QRs</span>
+                    <div class="stat-icon-box" style="background: #F2F3FF; color: #4F46E5;">📦</div>
+                </div>
+                <div class="stat-val">48</div>
+                <div class="stat-trend trend-up">▲ +12% this month</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with sc2:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Static QRs</span>
+                    <div class="stat-icon-box" style="background: #F1F5F9; color: #475569;">🔒</div>
+                </div>
+                <div class="stat-val">18</div>
+                <div class="stat-trend trend-neutral">Permanent Encodings</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with sc3:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Dynamic QRs</span>
+                    <div class="stat-icon-box" style="background: #E2DFFF; color: #3525CD;">⚡</div>
+                </div>
+                <div class="stat-val">30</div>
+                <div class="stat-trend trend-indigo">● Live Editable Routes</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with sc4:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Scans</span>
+                    <div class="stat-icon-box" style="background: #DCFCE7; color: #16A34A;">📈</div>
+                </div>
+                <div class="stat-val">14,290</div>
+                <div class="stat-trend trend-up">▲ +28.4% growth</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.write("")
+    # 3. Quick Utilities Row
+    st.markdown("<div style='font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.75rem 0 0.35rem 0;'>Quick Utilities</div>", unsafe_allow_html=True)
+    u1, u2, u3 = st.columns(3)
+    with u1:
+        if st.button("🎯 Scan & Test Integrity", use_container_width=True, help="Validate scan speed and camera decoding"):
+            st.session_state["nav_view"] = "Create QR Code"
+            st.session_state["simulate_scan_active"] = True
+            st.rerun()
+    with u2:
+        if st.button("📊 View Full Analytics", use_container_width=True, help="Inspect scan telemetry and devices"):
+            st.session_state["nav_view"] = "Analytics"
+            st.rerun()
+    with u3:
+        if st.button("🔑 Manage Workspace API Keys", use_container_width=True, help="Access Developer API tokens"):
+            st.session_state["nav_view"] = "Settings"
+            st.rerun()
+
+    # 4. Recent QR Codes Feed
+    st.write("")
+    c_rec_h, c_rec_act = st.columns([3, 1])
+    with c_rec_h:
+        st.markdown("<div style='font-size: 1.15rem; font-weight: 700; color: #131B2E; display: flex; align-items: center; gap: 8px;'>Recent QR Codes <span style='background: #EAEDFF; color: #3525CD; font-size: 0.75rem; padding: 2px 8px; border-radius: 9999px;'>48 Total</span></div>", unsafe_allow_html=True)
+    with c_rec_act:
+        if st.button("View All QRs →", use_container_width=True):
+            st.session_state["nav_view"] = "My QR Codes"
+            st.rerun()
+
+    for item in st.session_state["recent_qrs"]:
+        st.markdown(
+            f"""
+            <div class="recent-qr-card">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; background: #F2F3FF; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                        ⚡
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.95rem; color: #131B2E;">{item['name']}</div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #64748B; margin-top: 2px;">
+                            <span style="background: {'#E2DFFF' if item['type']=='Dynamic' else '#F1F5F9'}; color: {'#3525CD' if item['type']=='Dynamic' else '#475569'}; padding: 1px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase;">{item['type']}</span>
+                            <span>• Created {item['date']}</span>
+                            <span>• <strong style="color: #4F46E5;">{item['scans']}</strong> scans</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="background: {'#DCFCE7' if item['status']=='Active' else '#FEE2E2'}; color: {'#16A34A' if item['status']=='Active' else '#DC2626'}; padding: 3px 10px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700;">
+                        {'● Active' if item['status']=='Active' else '⏸ Paused'}
+                    </span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+# =========================================================================
+# VIEW 2: CREATE QR CODE STUDIO (Stitch create_qr_code_type_content & preview)
+# =========================================================================
+elif st.session_state["nav_view"] == "Create QR Code":
+    # 1. Stepper Header
+    st.markdown(
+        """
+        <div class="stepper-container">
+            <div class="step-item">
+                <div class="step-num active">1</div>
+                <div>
+                    <div class="step-text-title">QR Type</div>
+                    <div class="step-text-sub">Routing Mode</div>
+                </div>
+            </div>
+            <div class="stepper-line"></div>
+            <div class="step-item">
+                <div class="step-num active">2</div>
+                <div>
+                    <div class="step-text-title">Payload Content</div>
+                    <div class="step-text-sub">10 Formats</div>
+                </div>
+            </div>
+            <div class="stepper-line"></div>
+            <div class="step-item">
+                <div class="step-num active">3</div>
+                <div>
+                    <div class="step-text-title">Design & Exports</div>
+                    <div class="step-text-sub">Live Viewport</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Success Flow Celebration if Triggered
+    if st.session_state.get("show_success_card", False):
+        st.markdown(
+            f"""
+            <div class="success-hero-box">
+                <div style="font-size: 2.2rem; margin-bottom: 0.35rem;">🎉</div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: #131B2E; letter-spacing: -0.02em;">
+                    Your Dynamic QR is Live!
+                </div>
+                <div style="color: #64748B; font-size: 0.9rem; margin-top: 4px;">
+                    <strong>{st.session_state.get('campaign_name', 'Campaign')}</strong> is fully generated, SSL-verified, and tracking real-time scans.
+                </div>
+                <div style="margin: 0.85rem 0;">
+                    <span class="shortlink-pill">qr.st/d/summer25</span>
+                </div>
+                <div style="font-size: 0.8rem; color: #16A34A; font-weight: 600;">
+                    ✅ Changes propagate to edge CDN within ~80ms without re-printing.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Responsive Studio Layout: Left (Configuration) & Right (Live Stage Viewport)
+    col_form, col_stage = st.columns([1.18, 0.82], gap="large")
+
+    # ---------------------------------------------------------------------
+    # LEFT COLUMN: STEP 1 TYPE, STEP 2 CONTENT, STEP 3 CUSTOMIZATION
+    # ---------------------------------------------------------------------
+    with col_form:
+        # STEP 1: CHOOSE QR TYPE
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: #E2DFFF; color: #3525CD; font-weight: 700; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px;">STEP 1</span>
+                    <span style="font-size: 1.05rem; font-weight: 700; color: #131B2E;">Choose QR Type</span>
+                </div>
+                <span style="font-size: 0.72rem; color: #4F46E5; font-weight: 700; text-transform: uppercase;">Required</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        t_col1, t_col2 = st.columns(2)
+        with t_col1:
+            is_dynamic = st.session_state["qr_mode"] == "Dynamic"
+            st.markdown(
+                f"""
+                <div class="type-card {'selected' if is_dynamic else ''}">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 36px; height: 36px; background: #4F46E5; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">⚡</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.95rem;">Dynamic QR</div>
+                                <span class="badge-recommended">Recommended</span>
+                            </div>
+                        </div>
+                        <span style="color: {'#4F46E5' if is_dynamic else '#CBD5E1'}; font-size: 1.2rem;">{'●' if is_dynamic else '○'}</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 8px; line-height: 1.4;">
+                        Editable destination anytime • Full scan analytics • Instant edge sync.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button("Select Dynamic QR", key="btn_select_dyn", use_container_width=True):
+                st.session_state["qr_mode"] = "Dynamic"
+                st.rerun()
+
+        with t_col2:
+            is_static = st.session_state["qr_mode"] == "Static"
+            st.markdown(
+                f"""
+                <div class="type-card {'selected' if is_static else ''}">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 36px; height: 36px; background: #EAEDFF; color: #464555; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">🔒</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.95rem;">Static QR</div>
+                                <span style="background: #F1F5F9; color: #475569; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 9999px; text-transform: uppercase;">Permanent</span>
+                            </div>
+                        </div>
+                        <span style="color: {'#4F46E5' if is_static else '#CBD5E1'}; font-size: 1.2rem;">{'●' if is_static else '○'}</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 8px; line-height: 1.4;">
+                        Non-editable hardcoded data • Free unlimited offline scans.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button("Select Static QR", key="btn_select_stat", use_container_width=True):
+                st.session_state["qr_mode"] = "Static"
+                st.rerun()
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # STEP 2: CHOOSE CONTENT TYPE & DETAILS
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: #E2DFFF; color: #3525CD; font-weight: 700; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px;">STEP 2</span>
+                    <span style="font-size: 1.05rem; font-weight: 700; color: #131B2E;">Payload Content Configuration</span>
+                </div>
+                <span style="font-size: 0.75rem; color: #64748B;">10 Types Supported</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        c_ptype, c_pclear = st.columns([3.2, 1.2])
+        with c_ptype:
+            selected_type = st.selectbox(
+                "Select QR Format",
+                options=QR_TYPES,
+                key="qr_type",
+                label_visibility="collapsed",
+            )
+        with c_pclear:
+            if st.button("🧹 Clear Form", use_container_width=True, help="Reset form fields"):
+                if "URL" in selected_type: st.session_state["url_input"] = ""
+                elif "Text" in selected_type: st.session_state["text_input"] = ""
+                elif "Wi-Fi" in selected_type:
+                    st.session_state["wifi_ssid"] = ""
+                    st.session_state["wifi_password"] = ""
+                st.rerun()
+
+        # Campaign Name field
+        st.text_input("Campaign / QR Code Name", key="campaign_name", placeholder="e.g. Summer Promo Menu", help="Internal identifier for your dashboard tracking.")
+
+        errors = {}
+        payload_data = ""
+        clean_type_name = selected_type.split()[-1].lower()
+
+        # Render Content Form Fields based on Type
+        # ========================== 1. URL ==========================
+        if "URL" in selected_type:
+            st.text_input(
+                "Target Destination URL *",
+                key="url_input",
+                placeholder="https://yourdomain.com/landing",
+                help="The destination address loaded when scanned.",
+            )
+            raw_url = st.session_state["url_input"].strip()
+            if not raw_url:
+                errors["url"] = "Target URL cannot be empty."
+                render_field_error(errors["url"])
+            else:
+                payload_data = build_url(raw_url)
+                st.markdown(
+                    """
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #16A34A; font-weight: 600; margin-top: -0.25rem;">
+                        <span>✓</span> Valid SSL Gateway Destination URL
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        # ========================== 2. Plain Text ==========================
+        elif "Text" in selected_type:
+            st.text_area(
+                "Plain Text Payload *",
+                key="text_input",
+                placeholder="Enter unformatted plaintext, serial numbers, tokens...",
+                height=110,
+            )
+            text_val = st.session_state["text_input"]
+            char_count = len(text_val)
+            st.markdown(f"<div style='font-size: 0.75rem; color: #64748B; text-align: right;'>{char_count} / 2,000 characters</div>", unsafe_allow_html=True)
+            if not text_val.strip():
+                errors["text"] = "Text payload cannot be empty."
+                render_field_error(errors["text"])
+            elif char_count > 2000:
+                errors["text"] = "Text exceeds the 2,000 character ceiling."
+                render_field_error(errors["text"])
+            else:
+                payload_data = build_text(text_val)
+
+        # ========================== 3. Wi-Fi ==========================
+        elif "Wi-Fi" in selected_type:
+            st.text_input("Network Name (SSID) *", key="wifi_ssid", placeholder="StoreGuest_5G")
+            ssid_val = st.session_state["wifi_ssid"].strip()
+            if not ssid_val:
+                errors["wifi_ssid"] = "Wi-Fi SSID is required."
+                render_field_error(errors["wifi_ssid"])
+
+            w_c1, w_c2 = st.columns([1.5, 1])
+            with w_c1:
+                st.text_input("Wi-Fi Password", key="wifi_password", type="default" if st.session_state.get("wifi_show_password") else "password")
+            with w_c2:
+                st.selectbox("Security Encryption", options=["WPA/WPA2", "WEP", "Open (nopass)"], key="wifi_security")
+
+            wc_chk1, wc_chk2 = st.columns(2)
+            with wc_chk1:
+                st.checkbox("Show password plaintext", key="wifi_show_password")
+            with wc_chk2:
+                st.checkbox("Hidden network SSID", key="wifi_hidden")
+
+            if not errors:
+                payload_data = build_wifi(
+                    ssid=ssid_val,
+                    password=st.session_state["wifi_password"],
+                    security=st.session_state["wifi_security"],
+                    hidden=st.session_state["wifi_hidden"],
+                )
+
+        # ========================== 4. vCard Profile ==========================
+        elif "Contact" in selected_type or "vCard" in selected_type:
+            vc1, vc2 = st.columns(2)
+            with vc1: st.text_input("First Name *", key="vcard_first_name")
+            with vc2: st.text_input("Last Name", key="vcard_last_name")
+
+            if not st.session_state["vcard_first_name"].strip():
+                errors["vcard_fn"] = "First name is required."
+                render_field_error(errors["vcard_fn"])
+
+            vc3, vc4 = st.columns(2)
+            with vc3: st.text_input("Primary Mobile Number *", key="vcard_phone")
+            with vc4: st.text_input("Email Address", key="vcard_email")
+
+            if not st.session_state["vcard_phone"].strip():
+                errors["vcard_ph"] = "Phone number is required."
+                render_field_error(errors["vcard_ph"])
+
+            vc5, vc6 = st.columns(2)
+            with vc5: st.text_input("Organization / Company", key="vcard_company")
+            with vc6: st.text_input("Designation / Title", key="vcard_job_title")
+
+            st.text_input("Website Portfolio Link", key="vcard_website")
+            st.text_input("Office / Postal Address", key="vcard_address")
+
+            if not errors:
+                payload_data = build_vcard(
+                    first_name=st.session_state["vcard_first_name"],
+                    last_name=st.session_state["vcard_last_name"],
+                    phone=st.session_state["vcard_phone"],
+                    email=st.session_state["vcard_email"],
+                    company=st.session_state["vcard_company"],
+                    job_title=st.session_state["vcard_job_title"],
+                    website=st.session_state["vcard_website"],
+                    address=st.session_state["vcard_address"],
+                )
+
+        # ========================== 5. WhatsApp ==========================
+        elif "WhatsApp" in selected_type:
+            wa_c1, wa_c2 = st.columns([1, 2.2])
+            with wa_c1: st.selectbox("Country Code", options=["+91", "+1", "+44", "+61", "+81", "+49", "+971"], key="wa_cc")
+            with wa_c2: st.text_input("WhatsApp Mobile Number *", key="wa_phone", placeholder="9876543210")
+
+            num_val = st.session_state["wa_phone"].strip()
+            digits = re.sub(r"\D", "", num_val)
+            if not num_val:
+                errors["wa_phone"] = "WhatsApp number is required."
+                render_field_error(errors["wa_phone"])
+            elif len(digits) < 10:
+                errors["wa_phone"] = "Enter a valid phone number (at least 10 digits)."
+                render_field_error(errors["wa_phone"])
+
+            st.text_area("Prefilled Chat Message", key="wa_message", placeholder="Hello, I would like to inquire about...", height=85)
+            if not errors:
+                payload_data = build_whatsapp(f"{st.session_state['wa_cc']}{num_val}", message=st.session_state["wa_message"])
+
+        # ========================== 6. Email ==========================
+        elif "Email" in selected_type:
+            st.text_input("Recipient Email Address *", key="email_to", placeholder="support@company.com")
+            to_val = st.session_state["email_to"].strip()
+            if not to_val or not re.match(EMAIL_REGEX, to_val):
+                errors["email"] = "Please enter a valid email address."
+                render_field_error(errors["email"])
+
+            st.text_input("Subject Line", key="email_subject", placeholder="Product Inquiry")
+            st.text_area("Message Body Content", key="email_body", placeholder="Write your prefilled email draft here...", height=90)
+            if not errors:
+                payload_data = build_email(to=to_val, subject=st.session_state["email_subject"], body=st.session_state["email_body"])
+
+        # ========================== 7. Phone Call ==========================
+        elif "Phone" in selected_type:
+            p_c1, p_c2 = st.columns([1, 2.2])
+            with p_c1: st.selectbox("Country Code", options=["+91", "+1", "+44", "+61", "+81", "+49"], key="phone_cc")
+            with p_c2: st.text_input("Telephone Number *", key="phone_number", placeholder="9876543210")
+
+            num_val = st.session_state["phone_number"].strip()
+            if not num_val:
+                errors["phone"] = "Phone number is required."
+                render_field_error(errors["phone"])
+            else:
+                payload_data = build_phone(num_val, country_code=st.session_state["phone_cc"])
+
+        # ========================== 8. SMS ==========================
+        elif "SMS" in selected_type:
+            st.text_input("Target Mobile Number *", key="sms_number", placeholder="+919876543210")
+            num_val = st.session_state["sms_number"].strip()
+            if not num_val:
+                errors["sms"] = "Target phone number is required."
+                render_field_error(errors["sms"])
+            st.text_area("Pre-filled Text Message", key="sms_message", placeholder="Hello, confirming our meeting at 4 PM.", height=80)
+            if not errors:
+                payload_data = build_sms(num_val, message=st.session_state["sms_message"])
+
+        # ========================== 9. UPI Payment ==========================
+        elif "UPI" in selected_type:
+            st.text_input("Merchant UPI ID (VPA) *", key="upi_id", placeholder="merchant@okhdfcbank")
+            upi_val = st.session_state["upi_id"].strip()
+            if not upi_val or not re.match(UPI_REGEX, upi_val):
+                errors["upi_id"] = "Invalid UPI ID (e.g. name@bank)."
+                render_field_error(errors["upi_id"])
+
+            st.text_input("Payee Account Name *", key="upi_name", placeholder="Acme Official Store")
+            if not st.session_state["upi_name"].strip():
+                errors["upi_name"] = "Payee name is required."
+                render_field_error(errors["upi_name"])
+
+            u_c1, u_c2 = st.columns(2)
+            with u_c1: st.text_input("Amount in INR (Optional)", key="upi_amount", placeholder="750.00")
+            with u_c2: st.text_input("Payment Note / Reference", key="upi_note", placeholder="Invoice #5021")
+
+            if not errors:
+                payload_data = build_upi(
+                    upi_id=upi_val,
+                    payee_name=st.session_state["upi_name"],
+                    amount=st.session_state["upi_amount"],
+                    note=st.session_state["upi_note"],
+                )
+
+        # ========================== 10. Image ==========================
+        elif "Image" in selected_type:
+            st.caption("Upload an image (PNG, JPG, WebP) to encode or provide a hosted URL.")
+            up_img = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg", "webp"], key="img_uploader")
+            if up_img:
+                try:
+                    payload_data = build_image_data_uri(up_img.getvalue(), max_dimension=st.session_state.get("img_max_dimension", 48))
+                    st.success("✅ Image converted to lightweight Data URI")
+                except Exception as e:
+                    errors["img"] = str(e)
+                    render_field_error(errors["img"])
+            else:
+                st.text_input("Or Hosted Image URL", key="img_hosted_url", placeholder="https://example.com/asset.png")
+                if st.session_state["img_hosted_url"]:
+                    payload_data = build_url(st.session_state["img_hosted_url"])
+
+        # Advanced Security & Rules Toggles (Matches Stitch)
+        with st.expander("🛡️ Security & Access Rules", expanded=False):
+            sec_c1, sec_c2 = st.columns(2)
+            with sec_c1:
+                st.checkbox("Password Protection", key="password_protect", help="Require pin code to view content")
+                if st.session_state.get("password_protect"):
+                    st.text_input("Access PIN Code", key="password_value", type="password", placeholder="e.g. 4821")
+            with sec_c2:
+                st.checkbox("Scan Expiration Date", key="expiration_date", help="Deactivate code after date")
+                if st.session_state.get("expiration_date"):
+                    st.date_input("Deactivate After", key="expiry_date_val")
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # =================================================================
+        # STEP 3 CUSTOMIZATION ACCORDIONS (Colors, Pattern, Logo, Size)
+        # =================================================================
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: #E2DFFF; color: #3525CD; font-weight: 700; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px;">STEP 3</span>
+                    <span style="font-size: 1.05rem; font-weight: 700; color: #131B2E;">Design & Studio Customization</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Accordion 1: Colors & Finish
+        with st.expander("🎨 Colors & Canvas Finish", expanded=True):
+            st.caption("Foreground and background palette.")
+            # Color Preset Swatches
+            swatch_cols = st.columns(5)
+            preset_palette = [
+                ("#4F46E5", "Indigo"),
+                ("#131B2E", "Slate"),
+                ("#00702F", "Forest"),
+                ("#BA1A1A", "Crimson"),
+                ("#2C3480", "Cobalt"),
+            ]
+            for idx, (p_hex, p_name) in enumerate(preset_palette):
+                with swatch_cols[idx]:
+                    if st.button(f"● {p_name}", key=f"swatch_{p_name}", use_container_width=True):
+                        st.session_state["qr_fg_color"] = p_hex
+                        st.rerun()
+
+            c_fg, c_bg = st.columns(2)
+            with c_fg:
+                fg_col = st.color_picker("Foreground (Matrix Dots)", value=st.session_state.get("qr_fg_color", "#4F46E5"))
+                st.session_state["qr_fg_color"] = fg_col
+            with c_bg:
+                bg_col = st.color_picker("Background Canvas", value=st.session_state.get("qr_bg_color", "#FFFFFF"))
+                st.session_state["qr_bg_color"] = bg_col
+
+            # WCAG Contrast Ratio Check
+            ratio = contrast_ratio(fg_col, bg_col)
+            is_contrast_ok = ratio >= 3.0
+            if is_contrast_ok:
+                st.markdown(f'<div class="contrast-badge contrast-pass">✅ Contrast Ratio: <strong>{ratio:.1f}:1</strong> (Passes WCAG ≥ 3:1)</div>', unsafe_allow_html=True)
+                st.session_state["allow_low_contrast"] = False
+            else:
+                st.markdown(f'<div class="contrast-badge contrast-fail">⚠️ Low Contrast: <strong>{ratio:.1f}:1</strong> (&lt; 3:1 minimum)</div>', unsafe_allow_html=True)
+                st.session_state["allow_low_contrast"] = st.checkbox("Proceed with low contrast download anyway", value=st.session_state.get("allow_low_contrast", False))
+
+        # Accordion 2: Pattern & Dots Geometry
+        with st.expander("💠 Pattern & Dot Geometry", expanded=True):
+            style_choice = st.radio(
+                "Matrix Module Dot Geometry",
+                options=["Square", "Rounded", "Circle"],
+                index=["Square", "Rounded", "Circle"].index(st.session_state.get("qr_style", "Rounded")),
+                horizontal=True,
+                help="Square classic, Modern rounded corners, or elegant smooth circles.",
+            )
+            st.session_state["qr_style"] = style_choice
+
+        # Accordion 3: Center Logo & Watermark
+        with st.expander("🖼️ Center Logo & Presets", expanded=bool(st.session_state.get("logo_bytes"))):
+            st.caption("Upload custom logo (PNG/JPG up to 2 MB) or select quick preset.")
+            logo_up = st.file_uploader("Upload Brand Logo", type=["png", "jpg", "jpeg"], key="logo_file_input", label_visibility="collapsed")
+            if logo_up is not None:
+                is_valid_logo, logo_err, valid_bytes = validate_logo(logo_up)
+                if is_valid_logo:
+                    st.session_state["logo_bytes"] = valid_bytes
+                    st.session_state["logo_filename"] = logo_up.name
+                else:
+                    render_field_error(logo_err)
+
+            if st.session_state.get("logo_bytes") is not None:
+                c_prev_l, c_act_l = st.columns([1, 2])
+                with c_prev_l:
+                    st.image(st.session_state["logo_bytes"], width=75, caption="Active Logo")
+                with c_act_l:
+                    st.markdown(f"**Logo Attached:** `{st.session_state.get('logo_filename', 'brand_logo')}`")
+                    if st.button("🗑️ Remove Logo", use_container_width=True):
+                        st.session_state["logo_bytes"] = None
+                        st.session_state["logo_filename"] = ""
+                        st.rerun()
+
+                st.markdown(
+                    """
+                    <div style="background: #F2F3FF; border-left: 3px solid #4F46E5; padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 0.78rem; color: #464555; margin-top: 6px;">
+                        ℹ️ <strong>Auto-Protection Active:</strong> Error Correction Level H (30% recovery) is automatically enforced for guaranteed scanning with center logo.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        # Accordion 4: Size & Redundancy
+        with st.expander("⚙️ Size & Error Correction", expanded=False):
+            c_ecc, c_res = st.columns(2)
+            with c_ecc:
+                ecc_sel = st.selectbox("Error Correction (ECC)", options=["H (30% - Best)", "Q (25%)", "M (15% - Standard)", "L (7%)"], index=0)
+                st.session_state["ecc_level"] = ecc_sel[0]
+            with c_res:
+                b_size = st.slider("Module Pixel Scale", min_value=6, max_value=16, value=st.session_state.get("qr_box_size", 10))
+                st.session_state["qr_box_size"] = b_size
+
+    # ---------------------------------------------------------------------
+    # RIGHT COLUMN: LIVE QR STAGE VIEWPORT & MULTI-FORMAT EXPORT
+    # ---------------------------------------------------------------------
+    with col_stage:
+        st.markdown(
+            """
+            <div style="font-size: 1.05rem; font-weight: 700; color: #131B2E; margin-bottom: 0.65rem;">
+                Live QR Stage & Exports
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        is_payload_valid = len(errors) == 0 and bool(payload_data)
+
+        if is_payload_valid:
+            try:
+                # Build Styled QR Image
+                pil_qr = build_qr(
+                    data=payload_data,
+                    size=st.session_state.get("qr_box_size", 10),
+                    fg=st.session_state.get("qr_fg_color", "#4F46E5"),
+                    bg=st.session_state.get("qr_bg_color", "#FFFFFF"),
+                    style=st.session_state.get("qr_style", "Rounded"),
+                    logo_bytes=st.session_state.get("logo_bytes"),
+                )
+
+                png_bytes = to_png(pil_qr)
+                b64_png = base64.b64encode(png_bytes).decode("utf-8")
+
+                mode_label = st.session_state.get("qr_mode", "Dynamic")
+                dest_preview = payload_data[:34] + ("..." if len(payload_data) > 34 else "")
+
+                # QR Stage Viewport Container
+                zoomed_class = "zoomed" if st.session_state.get("stage_zoom") else ""
+                inverted_class = "inverted" if st.session_state.get("stage_invert") else ""
+
+                st.markdown(
+                    f"""
+                    <div class="qr-stage-card">
+                        <div class="stage-header-bar">
+                            <div class="dynamic-active-pill">
+                                <span class="status-dot-pulse"></span>
+                                <span>{mode_label}</span>
+                            </div>
+                            <div class="target-url-badge" title="{payload_data}">
+                                <span>🔗</span> {dest_preview}
+                            </div>
+                        </div>
+                        <div class="qr-viewport-frame {zoomed_class} {inverted_class}">
+                            <img src="data:image/png;base64,{b64_png}" style="width: 230px; height: 230px; display: block; border-radius: 8px;" alt="QR Code" />
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748B; font-weight: 500;">
+                            Scan with any smartphone camera lens
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                # Floating Action Pill Toolbar (Zoom, Invert, Simulate Scan)
+                t_b1, t_b2, t_b3 = st.columns(3)
+                with t_b1:
+                    if st.button("🔍 Zoom Toggle", use_container_width=True):
+                        st.session_state["stage_zoom"] = not st.session_state.get("stage_zoom", False)
+                        st.rerun()
+                with t_b2:
+                    if st.button("🌓 Invert Colors", use_container_width=True):
+                        st.session_state["stage_invert"] = not st.session_state.get("stage_invert", False)
+                        st.rerun()
+                with t_b3:
+                    if st.button("🎯 Simulate Scan", use_container_width=True):
+                        st.session_state["simulate_scan_active"] = True
+                        st.rerun()
+
+                # Scan Simulator Banner Notification
+                if st.session_state.get("simulate_scan_active"):
+                    st.markdown(
+                        """
+                        <div class="scan-simulator-banner">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span>✅</span>
+                                <span>Optimal 100% Scan Integrity</span>
+                            </div>
+                            <span style="font-size: 0.75rem; background: #FFFFFF; padding: 2px 7px; border-radius: 4px; color: #16A34A;">120ms</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                st.write("")
+
+                # Generate / Save CTA Button
+                if st.button("⚡ Generate & Publish QR Code", type="primary", use_container_width=True):
+                    st.session_state["show_success_card"] = True
+                    # Add to mock repository
+                    new_entry = {
+                        "id": f"QR-{int(datetime.now().timestamp()) % 100000}",
+                        "name": st.session_state.get("campaign_name", "New QR Code"),
+                        "type": st.session_state.get("qr_mode", "Dynamic"),
+                        "date": datetime.now().strftime("%b %d, %Y"),
+                        "scans": "0",
+                        "status": "Active",
+                        "url": payload_data,
+                    }
+                    st.session_state["recent_qrs"].insert(0, new_entry)
+                    st.rerun()
+
+                # Multi-Format Downloads Grid
+                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #131B2E; margin: 0.75rem 0 0.35rem 0;'>Direct Export Formats</div>", unsafe_allow_html=True)
+                timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_base = f"qr_{clean_type_name}_{timestamp_str}"
+
+                can_download = is_contrast_ok or st.session_state.get("allow_low_contrast", False)
+                jpg_bytes = to_jpg(pil_qr)
+                pdf_bytes = to_pdf(pil_qr)
+                svg_bytes = to_svg(
+                    payload_data,
+                    fg=st.session_state.get("qr_fg_color", "#4F46E5"),
+                    bg=st.session_state.get("qr_bg_color", "#FFFFFF"),
+                    scale=st.session_state.get("qr_box_size", 10),
+                )
+
+                d_c1, d_c2 = st.columns(2)
+                with d_c1:
+                    st.download_button(
+                        label="⬇️ PNG (High-Res)",
+                        data=png_bytes,
+                        file_name=f"{file_base}.png",
+                        mime="image/png",
+                        type="primary",
+                        disabled=not can_download,
+                        use_container_width=True,
+                    )
+                    st.download_button(
+                        label="⬇️ SVG (Vector Math)",
+                        data=svg_bytes,
+                        file_name=f"{file_base}.svg",
+                        mime="image/svg+xml",
+                        disabled=not can_download,
+                        use_container_width=True,
+                    )
+                with d_c2:
+                    st.download_button(
+                        label="⬇️ JPG (Raster)",
+                        data=jpg_bytes,
+                        file_name=f"{file_base}.jpg",
+                        mime="image/jpeg",
+                        disabled=not can_download,
+                        use_container_width=True,
+                    )
+                    st.download_button(
+                        label="⬇️ PDF (Print Package)",
+                        data=pdf_bytes,
+                        file_name=f"{file_base}.pdf",
+                        mime="application/pdf",
+                        disabled=not can_download,
+                        use_container_width=True,
+                    )
+
+                # Clipboard Copy component
+                st.write("")
+                render_clipboard_component(png_bytes)
+
+                # Inspect Raw Payload
+                with st.expander("🔍 Inspect Encoded Matrix Payload", expanded=False):
+                    st.code(payload_data, language="text")
+
+            except Exception as e:
+                st.error(f"Error compiling styled QR code: {str(e)}")
+
+        else:
+            st.markdown(
+                """
+                <div style="background: #FFFFFF; border: 2px dashed #E2E8F0; border-radius: 16px; padding: 3rem 1.5rem; text-align: center; color: #64748B;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
+                    <div style="font-weight: 700; color: #131B2E; font-size: 1.05rem;">Awaiting Valid Input</div>
+                    <div style="font-size: 0.82rem; color: #64748B; max-width: 240px; margin: 4px auto 0 auto;">
+                        Fill in all required fields on the left to render your styled live preview.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+# =========================================================================
+# VIEW 3: MY QR CODES REPOSITORY
+# =========================================================================
+elif st.session_state["nav_view"] == "My QR Codes":
+    st.markdown("<div style='font-size: 1.4rem; font-weight: 700; color: #131B2E;'>My QR Codes Repository</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;'>Manage, route, monitor and download your active QR campaign assets.</div>", unsafe_allow_html=True)
+
+    # Filter chips
+    f1, f2, f3, f4 = st.columns([1, 1, 1, 3])
+    with f1: st.button("All Codes (48)", use_container_width=True)
+    with f2: st.button("⚡ Dynamic (30)", use_container_width=True)
+    with f3: st.button("🔒 Static (18)", use_container_width=True)
+
+    st.write("")
+    for item in st.session_state["recent_qrs"]:
+        with st.container():
+            st.markdown(
+                f"""
+                <div class="recent-qr-card">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; background: #F2F3FF; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                            ⚡
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 1rem; color: #131B2E;">{item['name']} <span style="font-size: 0.75rem; color: #4F46E5; font-weight: 600;">#{item['id']}</span></div>
+                            <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px;">
+                                Destination: <code style="background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #131B2E;">{item['url']}</code>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: #64748B; margin-top: 4px;">
+                                <span style="background: {'#E2DFFF' if item['type']=='Dynamic' else '#F1F5F9'}; color: {'#3525CD' if item['type']=='Dynamic' else '#475569'}; padding: 1px 6px; border-radius: 4px; font-weight: 700;">{item['type']}</span>
+                                <span>• Created: {item['date']}</span>
+                                <span>• Total Scans: <strong style="color: #4F46E5;">{item['scans']}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: {'#DCFCE7' if item['status']=='Active' else '#FEE2E2'}; color: {'#16A34A' if item['status']=='Active' else '#DC2626'}; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700;">
+                            {'● Active' if item['status']=='Active' else '⏸ Paused'}
+                        </span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+# =========================================================================
+# VIEW 4: ANALYTICS DASHBOARD
+# =========================================================================
+elif st.session_state["nav_view"] == "Analytics":
+    st.markdown("<div style='font-size: 1.4rem; font-weight: 700; color: #131B2E;'>Live Scan Telemetry & Analytics</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;'>Real-time performance analytics across all dynamic QR campaigns.</div>", unsafe_allow_html=True)
+
+    a1, a2, a3, a4 = st.columns(4)
+    with a1:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <span class="stat-label">Total Impressions</span>
+                <div class="stat-val">14,290</div>
+                <div class="stat-trend trend-up">▲ +28.4% this week</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with a2:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <span class="stat-label">Unique Scanners</span>
+                <div class="stat-val">11,420</div>
+                <div class="stat-trend trend-up">▲ 79.9% unique rate</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with a3:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <span class="stat-label">Avg Routing Latency</span>
+                <div class="stat-val">84 ms</div>
+                <div class="stat-trend trend-up">⚡ Global edge CDN</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with a4:
+        st.markdown(
+            """
+            <div class="stat-card">
+                <span class="stat-label">Top Location</span>
+                <div class="stat-val">United States</div>
+                <div class="stat-trend trend-indigo">42% total traffic</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.write("")
+    # Chart Mockup
+    c_cht1, c_cht2 = st.columns([2, 1])
+    with c_cht1:
+        st.markdown("<div style='font-weight: 700; margin-bottom: 0.5rem;'>Scans Over Past 7 Days</div>", unsafe_allow_html=True)
+        # Using Streamlit native bar chart
+        import pandas as pd
+        sample_data = pd.DataFrame(
+            {"Scans": [1420, 1890, 2150, 1780, 2430, 2980, 3140]},
+            index=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        )
+        st.bar_chart(sample_data, color="#4F46E5")
+
+    with c_cht2:
+        st.markdown("<div style='font-weight: 700; margin-bottom: 0.5rem;'>Device Distribution</div>", unsafe_allow_html=True)
+        dev_data = pd.DataFrame(
+            {"Percentage": [58, 37, 5]},
+            index=["Apple iOS", "Android OS", "Desktop/Web"],
+        )
+        st.bar_chart(dev_data, color="#3525CD")
+
+
+# =========================================================================
+# VIEW 5: SETTINGS & API
+# =========================================================================
+elif st.session_state["nav_view"] == "Settings":
+    st.markdown("<div style='font-size: 1.4rem; font-weight: 700; color: #131B2E;'>Workspace Settings & API Keys</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;'>Manage workspace team access, custom short-link domains, and developer REST API tokens.</div>", unsafe_allow_html=True)
+
+    with st.expander("🔑 Developer REST API Keys", expanded=True):
+        st.text_input("Active Secret Token", value="qr_live_sk_89432890432894109432", type="password", disabled=True)
+        c_k1, c_k2 = st.columns(2)
+        with c_k1:
+            if st.button("Generate New API Key", use_container_width=True):
+                st.success("New token generated: qr_live_sk_99182371928371928371")
+        with c_k2:
+            st.button("Revoke Compromised Key", use_container_width=True)
+
+    with st.expander("🌐 Custom Domain Routing", expanded=False):
+        st.text_input("Custom Short-Link Domain", value="qr.yourbrand.com", placeholder="qr.brand.com")
+        st.caption("Point CNAME record to cdn.qrstudio.app to activate SSL custom routing.")
+
+    with st.expander("🏢 Workspace Profile", expanded=False):
+        st.text_input("Organization Name", value="Acme Enterprise")
+        st.text_input("Admin Billing Email", value="admin@acme.com")
